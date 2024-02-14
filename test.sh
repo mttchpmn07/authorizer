@@ -1,0 +1,1 @@
+uvicorn auth_app.main:app --reload
