@@ -1,15 +1,23 @@
 from pydantic import BaseModel
+from typing import Annotated, Union
 
-class URLBase(BaseModel):
-    target_url: str
+class UserBase(BaseModel):
+    uname: str
 
-class URL(URLBase):
-    is_active: bool
-    clicks: int
+class UserCreate(UserBase):
+    password: str
 
-    class Config:
-        orm_mode = True
+class UserAuth(UserBase):
+    password: str
 
-class URLInfo(URL):
-    url: str
-    admin_url: str
+class User(UserBase):
+    key: str
+    email: Union[str, None] = None
+    disabled: bool
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Union[str, None] = None
