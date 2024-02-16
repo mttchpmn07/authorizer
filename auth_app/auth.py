@@ -4,15 +4,15 @@ import string
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from typing import Union, Optional
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from . import crud
+from . import crud, exceptions
+from .config import get_settings
 
-SECRET_KEY = "b1358619ed784f3e2672e1bef403cc28dfba8b20ba7aceb1c5cd7417916939bd"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
@@ -46,20 +46,14 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, get_settings().secret_key, algorithm=get_settings().algorythm)
     return encoded_jwt
 
 def decode_jwt(token: str) -> Optional[str]:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        uname: str = payload.get("sub")
-        if uname is None:
-            raise credentials_exception
+        payload = jwt.decode(token, get_settings().secret_key, algorithms=[get_settings().algorythm])
+        if not (uname := payload.get("sub")):
+            raise exceptions.raise_unauthorized("Could not validate credentials")
         return uname
     except JWTError:
-        raise credentials_exception
+        raise exceptions.raise_unauthorized("Could not validate credentials")

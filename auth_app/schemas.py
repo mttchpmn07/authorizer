@@ -11,7 +11,6 @@ class UserAuth(UserBase):
     password: str
 
 class User(UserBase):
-    key: str
     email: Union[str, None] = None
     disabled: bool
 
