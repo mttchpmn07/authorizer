@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from . import schemas, crud, auth, exceptions
+
 from .database import get_db
 from .config import get_settings
-from .utils import get_current_active_user
+from .utils import get_current_active_user, get_current_active_user_refresh
 
 router = APIRouter()
 
@@ -17,15 +18,51 @@ async def get_pub_key():
 
 @router.post("/token")
 async def login_for_access_token(
+    response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(get_db)
 ) -> schemas.Token:
     if not (user := auth.authenticate_user(db, form_data.username, form_data.password)):
-        exceptions.raise_unauthorized("Incorrect username or password")
+        exceptions.raise_unauthorized("incorrect username or password")
+
     access_token_expires = timedelta(minutes=get_settings().access_token_expire_minutes)
     access_token = auth.create_access_token(
         data={"sub": user.uname}, private_key=auth.get_private_key(), expires_delta=access_token_expires
     )
+    refresh_token_expires = timedelta(hours=24)
+    refresh_token = auth.create_refresh_token(
+        data={"sub": user.uname}, private_key=auth.get_private_key(), expires_delta=refresh_token_expires
+    )
+
+    #TODO store refresh token in database
+
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite='Lax')    
+    return schemas.Token(access_token=access_token, token_type="bearer")
+
+@router.post("/token/refresh")
+async def refresh_access_token(
+    response: Response,
+    current_user: Annotated[schemas.User, Depends(get_current_active_user_refresh)],
+    db: Session = Depends(get_db)
+) -> schemas.Token:
+    
+    user_authorized = True #TODO validate refresh token in database
+
+    if not user_authorized:
+        exceptions.raise_unauthorized("invalid refresh token")
+        
+    access_token_expires = timedelta(minutes=get_settings().access_token_expire_minutes)
+    access_token = auth.create_access_token(
+        data={"sub": user.uname}, private_key=auth.get_private_key(), expires_delta=access_token_expires
+    )
+    refresh_token_expires = timedelta(hours=24)
+    refresh_token = auth.create_refresh_token(
+        data={"sub": user.uname}, private_key=auth.get_private_key(), expires_delta=refresh_token_expires
+    )
+
+    #TODO replace old refresh token in databse
+
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite='Lax')    
     return schemas.Token(access_token=access_token, token_type="bearer")
 
 @router.get("/users/me")

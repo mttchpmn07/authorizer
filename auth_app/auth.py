@@ -56,12 +56,31 @@ def authenticate_user(db: Session, uname: str, password: str):
 
 def create_access_token(data: dict, private_key, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
+
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    
     to_encode.update({"exp": expire})
+
     encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorythm)
+    return encoded_jwt
+
+def create_refresh_token(data: dict, private_key, expires_delta: Union[timedelta, None] = None):
+    to_encode = data.copy()
+
+    # Set a longer expiration for refresh tokens, e.g., 7 days
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=7)
+    
+    # For a refresh token, you might limit the data it contains. Typically, you might include a user identifier and nothing else.
+    # It's common to remove other claims that are present in the access token to minimize the refresh token's scope of use.
+    to_encode = {"user_id": to_encode.get("user_id"), "exp": expire}
+    
+    encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorythm)  # Adjust the algorithm as needed
     return encoded_jwt
 
 def decode_jwt(token: str, public_key) -> Optional[str]:
