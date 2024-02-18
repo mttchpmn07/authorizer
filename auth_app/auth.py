@@ -1,6 +1,6 @@
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer, SecurityScopes
 from typing import Union, Optional
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from . import crud, exceptions
 from .config import get_settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+token_auth_scheme = HTTPBearer()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 # Generate RSA key pair
@@ -78,7 +79,7 @@ def create_refresh_token(data: dict, private_key, expires_delta: Union[timedelta
     
     # For a refresh token, you might limit the data it contains. Typically, you might include a user identifier and nothing else.
     # It's common to remove other claims that are present in the access token to minimize the refresh token's scope of use.
-    to_encode = {"user_id": to_encode.get("user_id"), "exp": expire}
+    to_encode.update({"user_id": to_encode.get("user_id"), "exp": expire})
     
     encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorythm)  # Adjust the algorithm as needed
     return encoded_jwt

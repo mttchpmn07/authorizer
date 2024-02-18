@@ -53,17 +53,22 @@ async def refresh_access_token(
         
     access_token_expires = timedelta(minutes=get_settings().access_token_expire_minutes)
     access_token = auth.create_access_token(
-        data={"sub": user.uname}, private_key=auth.get_private_key(), expires_delta=access_token_expires
+        data={"sub": current_user.uname}, private_key=auth.get_private_key(), expires_delta=access_token_expires
     )
     refresh_token_expires = timedelta(hours=24)
     refresh_token = auth.create_refresh_token(
-        data={"sub": user.uname}, private_key=auth.get_private_key(), expires_delta=refresh_token_expires
+        data={"sub": current_user.uname}, private_key=auth.get_private_key(), expires_delta=refresh_token_expires
     )
 
     #TODO replace old refresh token in databse
 
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite='Lax')    
     return schemas.Token(access_token=access_token, token_type="bearer")
+
+@router.get("/protected-endpoint")
+def protected_endpoint(token: str = Depends(auth.token_auth_scheme)):
+    # Your endpoint logic here
+    return {"message": "This is a protected endpoint"}
 
 @router.get("/users/me")
 async def read_users_me(current_user: Annotated[schemas.User, Depends(get_current_active_user)]):
