@@ -8,7 +8,7 @@ from . import schemas, crud, auth, exceptions
 
 from .database import get_db
 from .config import get_settings
-from .utils import get_current_active_user, get_current_active_user_refresh
+from .utils import get_current_active_user, get_current_active_user_refresh, validate_token
 
 router = APIRouter()
 
@@ -66,7 +66,9 @@ async def refresh_access_token(
     return schemas.Token(access_token=access_token, token_type="bearer")
 
 @router.get("/protected-endpoint")
-def protected_endpoint(token: str = Depends(auth.token_auth_scheme)):
+def protected_endpoint(
+    _ : Annotated[None, Depends(validate_token)]
+):
     # Your endpoint logic here
     return {"message": "This is a protected endpoint"}
 
@@ -75,7 +77,10 @@ async def read_users_me(current_user: Annotated[schemas.User, Depends(get_curren
     return current_user
 
 @router.get("/items/")
-async def read_items(token: Annotated[str, Depends(auth.token_auth_scheme)]):
+async def read_items(
+    token: Annotated[str, Depends(auth.token_auth_scheme)],
+    _ : Annotated[schemas.User, Depends(get_current_active_user)]
+):
     return {"token": token}
 
 @router.post("/register", response_model=schemas.User)

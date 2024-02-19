@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     env_name: str = "Local"
     base_url: str = "http://localhost:8000"
     db_url: str = "sqlite:///./authorizer.db"
-    algorythm: str = "RS256"
+    algorithm: str = "RS256"
     access_token_expire_minutes: int = 30
 
     class Config:

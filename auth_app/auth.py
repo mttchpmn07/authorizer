@@ -1,4 +1,4 @@
-from jose import JWTError, jwt
+from jose import JWTError, ExpiredSignatureError, jwt
 from datetime import datetime, timedelta, timezone
 from fastapi.security import HTTPBearer, OAuth2PasswordBearer, SecurityScopes, OAuth2AuthorizationCodeBearer 
 from typing import Union, Optional
@@ -66,7 +66,7 @@ def create_access_token(data: dict, private_key, expires_delta: Union[timedelta,
     
     to_encode.update({"exp": expire})
 
-    encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorythm)
+    encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorithm)
     return encoded_jwt
 
 def create_refresh_token(data: dict, private_key, expires_delta: Union[timedelta, None] = None):
@@ -82,17 +82,29 @@ def create_refresh_token(data: dict, private_key, expires_delta: Union[timedelta
     # It's common to remove other claims that are present in the access token to minimize the refresh token's scope of use.
     to_encode.update({"user_id": to_encode.get("user_id"), "exp": expire})
     
-    encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorythm)  # Adjust the algorithm as needed
+    encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorithm)  # Adjust the algorithm as needed
     return encoded_jwt
 
 def decode_jwt(token: str, public_key) -> Optional[str]:
     try:
-        payload = jwt.decode(token, public_key, algorithms=[get_settings().algorythm])
+        payload = jwt.decode(token, public_key, algorithms=[get_settings().algorithm])        
         if not (uname := payload.get("sub")):
             raise exceptions.raise_unauthorized("Could not validate credentials")
+        print(payload.get("exp"))
         return uname
+    except ExpiredSignatureError:
+        raise exceptions.raise_unauthorized("Token has expired")
     except JWTError:
         raise exceptions.raise_unauthorized("Could not validate credentials")
+
+def validate_jwt(token: str, public_key):
+    try:
+        jwt.decode(token, public_key, algorithms=[get_settings().algorithm])
+    except ExpiredSignatureError:
+        raise exceptions.raise_unauthorized("Token has expired")
+    except JWTError:
+        raise exceptions.raise_unauthorized("Could not validate credentials")
+
 """
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
@@ -101,12 +113,12 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, get_settings().secret_key, algorithm=get_settings().algorythm)
+    encoded_jwt = jwt.encode(to_encode, get_settings().secret_key, algorithm=get_settings().algorithm)
     return encoded_jwt
 
 def decode_jwt(token: str) -> Optional[str]:
     try:
-        payload = jwt.decode(token, get_settings().secret_key, algorithms=[get_settings().algorythm])
+        payload = jwt.decode(token, get_settings().secret_key, algorithms=[get_settings().algorithm])
         if not (uname := payload.get("sub")):
             raise exceptions.raise_unauthorized("Could not validate credentials")
         return uname
