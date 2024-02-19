@@ -1,6 +1,6 @@
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
-from fastapi.security import HTTPBearer, OAuth2PasswordBearer, SecurityScopes
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer, SecurityScopes, OAuth2AuthorizationCodeBearer 
 from typing import Union, Optional
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -11,7 +11,8 @@ from cryptography.hazmat.backends import default_backend
 from . import crud, exceptions
 from .config import get_settings
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+#oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl="token", tokenUrl="token", refreshUrl="token/refresh")
 token_auth_scheme = HTTPBearer()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 

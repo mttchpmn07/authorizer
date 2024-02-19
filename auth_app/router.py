@@ -75,7 +75,7 @@ async def read_users_me(current_user: Annotated[schemas.User, Depends(get_curren
     return current_user
 
 @router.get("/items/")
-async def read_items(token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def read_items(token: Annotated[str, Depends(auth.token_auth_scheme)]):
     return {"token": token}
 
 @router.post("/register", response_model=schemas.User)
