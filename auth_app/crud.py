@@ -35,3 +35,8 @@ def enable_db_user(db: Session, uname: str) -> models.User:
     db.commit()
     db.refresh(user_db)
     return user_db
+
+def get_scopes_dict(db: Session) -> dict:
+    scopes = db.query(models.Scope).all()
+    scopes_dict = {scope.name: scope for scope in scopes}
+    return scopes_dict

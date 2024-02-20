@@ -25,8 +25,7 @@ async def login_for_access_token(
     if not (user := auth.authenticate_user(db, form_data.username, form_data.password)):
         exceptions.raise_unauthorized("incorrect username or password")
 
-    #scopes = {"scopes": ["admin", "user"]}
-    scopes = {"scopes": ["user"]}
+    scopes = {"scopes": [scope.name for scope in user.scopes]}
     access_token_expires = timedelta(minutes=get_settings().access_token_expire_minutes)
     access_token = auth.create_access_token(
         scopes=scopes,
@@ -55,14 +54,22 @@ async def refresh_access_token(
 
     if not user_authorized:
         exceptions.raise_unauthorized("invalid refresh token")
+
+    user = crud.get_db_user_by_uname(db=db, uname=current_user.uname)
         
+    scopes = {"scopes": [scope.name for scope in user.scopes]}
     access_token_expires = timedelta(minutes=get_settings().access_token_expire_minutes)
     access_token = auth.create_access_token(
-        data={"sub": current_user.uname}, private_key=auth.get_private_key(), expires_delta=access_token_expires
+        scopes=scopes,
+        data={"sub": user.uname},
+        private_key=auth.get_private_key(),
+        expires_delta=access_token_expires
     )
     refresh_token_expires = timedelta(hours=24)
     refresh_token = auth.create_refresh_token(
-        data={"sub": current_user.uname}, private_key=auth.get_private_key(), expires_delta=refresh_token_expires
+        data={"sub": user.uname},
+        private_key=auth.get_private_key(),
+        expires_delta=refresh_token_expires
     )
 
     #TODO replace old refresh token in databse

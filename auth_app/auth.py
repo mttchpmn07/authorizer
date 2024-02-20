@@ -18,11 +18,6 @@ from .config import get_settings
 token_auth_scheme = HTTPBearer()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-SCOPES = {
-    "user": "Basic user actions",
-    "admin": "Admin level actions",
-}
-
 # Generate RSA key pair
 private_key = rsa.generate_private_key(
     public_exponent=65537,
