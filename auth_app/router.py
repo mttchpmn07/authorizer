@@ -103,7 +103,7 @@ def protected_endpoint(
 
 @router.get("/manage/scopes")
 def get_scopes(
-    _ = Depends(is_admin())
+    _ = Depends(is_admin)
 ):    
     #TODO: return list of scopes
 
@@ -111,7 +111,7 @@ def get_scopes(
 
 @router.post("/manage/scopes/update")
 def update_scope(
-    _ = Depends(is_admin())
+    _ = Depends(is_admin)
 ):    
     #TODO: update the provided scope
 
@@ -119,7 +119,7 @@ def update_scope(
 
 @router.post("/manage/scopes/create")
 def update_scope(
-    _ = Depends(is_admin())
+    _ = Depends(is_admin)
 ):
     #TODO: create a new scope
 
@@ -127,7 +127,7 @@ def update_scope(
 
 @router.get("/manage/users")
 def get_scopes(
-    _ = Depends(is_admin())
+    _ = Depends(is_admin)
 ):
     #TODO: return list of users
 
@@ -135,7 +135,7 @@ def get_scopes(
 
 @router.post("/manage/users/update")
 def update_scope(
-    _ = Depends(is_admin())
+    _ = Depends(is_admin)
 ):
     #TODO: update the provided user
 
@@ -144,7 +144,7 @@ def update_scope(
 @router.post("/manage/users/create", response_model=schemas.User)
 def update_scope(
     userCreate: schemas.UserCreate,
-    _ = Depends(is_admin()),
+    _ = Depends(is_admin),
     db: Session = Depends(get_db)
 ):
     if crud.get_db_user_by_uname(db, userCreate.uname):
