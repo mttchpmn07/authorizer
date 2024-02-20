@@ -40,3 +40,28 @@ def get_scopes_dict(db: Session) -> dict:
     scopes = db.query(models.Scope).all()
     scopes_dict = {scope.name: scope for scope in scopes}
     return scopes_dict
+
+def add_refresh_token(db: Session, token: str) -> models.WhitelistedToken:
+    db_token = models.WhitelistedToken(token=token)
+    db.add(db_token)
+    db.commit()
+    db.refresh(db_token)
+    return db_token
+
+def get_refresh_token(db: Session, token: str) -> models.WhitelistedToken:
+    return (
+        db.query(models.WhitelistedToken)
+        .filter(models.WhitelistedToken.token == token)
+        .first()
+    )
+
+def remove_refresh_token(db: Session, token: str):
+    db_token = (
+        db.query(models.WhitelistedToken)
+        .filter(models.WhitelistedToken.token == token)
+        .first()
+    )
+    if not db_token:
+        return
+    db.delete(db_token)
+    db.commit()

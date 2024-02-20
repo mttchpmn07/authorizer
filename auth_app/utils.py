@@ -43,6 +43,13 @@ async def get_current_active_user(
         exceptions.raise_bad_request("inactive user")
     return current_user
 
+async def get_refresh_token(
+        request: Request
+) -> str:
+    if not (refresh_token := request.cookies.get("refresh_token")):
+        raise exceptions.raise_unauthorized("failed to retrieve refresh token")
+    return refresh_token
+
 async def get_current_user_refresh(
         request: Request,
         db: Annotated[Session, Depends(get_db)],

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Response, Request
 from fastapi.responses import RedirectResponse
 from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
@@ -7,9 +7,9 @@ from datetime import timedelta
 
 from . import schemas, crud, auth, exceptions
 
-from .database import get_db
+from .database import get_db, get_token_db
 from .config import get_settings
-from .utils import is_admin, get_current_user, get_current_active_user_refresh, validate_token
+from .utils import is_admin, get_current_user, get_current_active_user_refresh, validate_token, get_refresh_token
 
 router = APIRouter()
 
@@ -25,7 +25,8 @@ async def get_public_key():
 async def login_user(
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token_db: Session = Depends(get_token_db)
 ) -> schemas.Token:
     if not (user := auth.authenticate_user(db, form_data.username, form_data.password)):
         exceptions.raise_unauthorized("incorrect username or password")
@@ -43,7 +44,7 @@ async def login_user(
         data={"sub": user.uname}, private_key=auth.get_private_key(), expires_delta=refresh_token_expires
     )
 
-    #TODO store refresh token in database
+    crud.add_refresh_token(token_db, refresh_token)
 
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite='Lax')    
     return schemas.Token(access_token=access_token, token_type="bearer")
@@ -51,13 +52,13 @@ async def login_user(
 @router.post("/token/refresh")
 async def refresh_access_token(
     response: Response,
+    refresh_token: Annotated[str, Depends(get_refresh_token)],
     current_user: Annotated[schemas.User, Depends(get_current_active_user_refresh)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token_db: Session = Depends(get_token_db)
 ) -> schemas.Token:
     
-    user_authorized = True #TODO validate refresh token in database
-
-    if not user_authorized:
+    if not (refresh_token_db := crud.get_refresh_token(token_db, refresh_token)):
         exceptions.raise_unauthorized("invalid refresh token")
 
     user = crud.get_db_user_by_uname(db=db, uname=current_user.uname)
@@ -71,25 +72,24 @@ async def refresh_access_token(
         expires_delta=access_token_expires
     )
     refresh_token_expires = timedelta(hours=24)
-    refresh_token = auth.create_refresh_token(
+    new_refresh_token = auth.create_refresh_token(
         data={"sub": user.uname},
         private_key=auth.get_private_key(),
         expires_delta=refresh_token_expires
     )
 
-    #TODO replace old refresh token in databse
+    crud.remove_refresh_token(token_db, refresh_token)
+    crud.add_refresh_token(token_db, new_refresh_token)
 
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite='Lax')    
+    response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True, secure=True, samesite='Lax')    
     return schemas.Token(access_token=access_token, token_type="bearer")
 
 @router.post("/logout")
 async def logout_user(
-    user: schemas.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    refresh_token: Annotated[str, Depends(get_refresh_token)],
+    token_db: Session = Depends(get_token_db)
 ):
-    #TODO: Need to remove the refresh token from the database
-
-    return f"TODO: logout endpoint"
+    crud.remove_refresh_token(token_db, refresh_token)
 
 @router.get("/manage/scopes")
 async def get_scopes(

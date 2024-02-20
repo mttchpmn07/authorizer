@@ -1,4 +1,5 @@
-from sqlalchemy import ForeignKey, Table, Column
+from sqlalchemy import func
+from sqlalchemy import ForeignKey, Table, Column, DateTime
 from sqlalchemy.orm import mapped_column, relationship
 from sqlalchemy.orm import Mapped, DeclarativeBase, Session
 from typing import List
@@ -45,12 +46,12 @@ def build_default_entries(db: Session):
     # Check and add scopes if they do not exist
     default_scope = db.query(Scope).filter(Scope.name == "default").first()
     if not default_scope:
-        default_scope = Scope(name="default", desciption="Basic user actions")
+        default_scope = Scope(name="default", description="Basic user actions")
         db.add(default_scope)
     
     admin_scope = db.query(Scope).filter(Scope.name == "admin").first()
     if not admin_scope:
-        admin_scope = Scope(name="admin", desciption="Admin level actions")
+        admin_scope = Scope(name="admin", description="Admin level actions")
         db.add(admin_scope)
     
     db.commit()  # Commit here to ensure scopes are persisted before associating them with users
@@ -69,3 +70,14 @@ def build_default_entries(db: Session):
         db.add(first_admin)
     
     db.commit()
+
+class KeyValueBase(DeclarativeBase):
+    pass
+
+# Model for the key-value store
+class WhitelistedToken(KeyValueBase):
+    __tablename__ = "whitelisted_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(unique=True, index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
