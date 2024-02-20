@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Response
+from fastapi.responses import RedirectResponse
 from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -12,12 +13,16 @@ from .utils import is_admin, get_current_user, get_current_active_user_refresh, 
 
 router = APIRouter()
 
-@router.get("/pubkey")
-async def get_pub_key():
+@router.get("/")
+async def reroute_to_docs():
+    return RedirectResponse("/docs")
+
+@router.get("/key")
+async def get_public_key():
     return {"public_key": auth.get_public_key()}
 
 @router.post("/login")
-async def login_for_access_token(
+async def login_user(
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(get_db)
@@ -78,7 +83,7 @@ async def refresh_access_token(
     return schemas.Token(access_token=access_token, token_type="bearer")
 
 @router.post("/logout")
-def logout_user(
+async def logout_user(
     user: schemas.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -86,23 +91,8 @@ def logout_user(
 
     return f"TODO: logout endpoint"
 
-@router.get("/protected-endpoint")
-def protected_endpoint(
-    _ : Annotated[None, Depends(validate_token)]
-):
-    # Your endpoint logic here
-    return {"message": "This is a protected endpoint"}
-
-@router.get("/protected-admin-endpoint")
-def protected_endpoint(
-    _ = Depends(validate_token),
-    admin = Depends(is_admin)
-):
-    # Your endpoint logic here
-    return {"message": "This is an admin protected endpoint"}
-
 @router.get("/manage/scopes")
-def get_scopes(
+async def get_scopes(
     _ = Depends(is_admin)
 ):    
     #TODO: return list of scopes
@@ -110,7 +100,7 @@ def get_scopes(
     pass
 
 @router.post("/manage/scopes/update")
-def update_scope(
+async def update_scope(
     _ = Depends(is_admin)
 ):    
     #TODO: update the provided scope
@@ -118,7 +108,7 @@ def update_scope(
     pass
 
 @router.post("/manage/scopes/create")
-def update_scope(
+async def create_scope(
     _ = Depends(is_admin)
 ):
     #TODO: create a new scope
@@ -126,7 +116,7 @@ def update_scope(
     pass
 
 @router.get("/manage/users")
-def get_scopes(
+async def get_users(
     _ = Depends(is_admin)
 ):
     #TODO: return list of users
@@ -134,7 +124,7 @@ def get_scopes(
     pass
 
 @router.post("/manage/users/update")
-def update_scope(
+async def update_user(
     _ = Depends(is_admin)
 ):
     #TODO: update the provided user
@@ -142,7 +132,7 @@ def update_scope(
     pass
 
 @router.post("/manage/users/create", response_model=schemas.User)
-def update_scope(
+async def create_user(
     userCreate: schemas.UserCreate,
     _ = Depends(is_admin),
     db: Session = Depends(get_db)
@@ -156,3 +146,20 @@ def update_scope(
         exceptions.raise_bad_request(f"error creating user")
     
     return user
+
+"""
+@router.get("/protected-endpoint")
+async def protected_endpoint(
+    _ : Annotated[None, Depends(validate_token)]
+):
+    # Your endpoint logic here
+    return {"message": "This is a protected endpoint"}
+
+@router.get("/protected-admin-endpoint")
+async def protected_endpoint(
+    _ = Depends(validate_token),
+    admin = Depends(is_admin)
+):
+    # Your endpoint logic here
+    return {"message": "This is an admin protected endpoint"}
+"""
