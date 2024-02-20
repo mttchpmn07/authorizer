@@ -1,6 +1,6 @@
 from jose import JWTError, ExpiredSignatureError, jwt
 from datetime import datetime, timedelta, timezone
-from fastapi.security import HTTPBearer, OAuth2PasswordBearer, SecurityScopes, OAuth2AuthorizationCodeBearer 
+from fastapi.security import HTTPBearer
 from typing import Union, Optional
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -11,10 +11,17 @@ from cryptography.hazmat.backends import default_backend
 from . import crud, exceptions
 from .config import get_settings
 
+# This is used for password log in, but doesn't play well with 2 token auth scheme
 #oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-oauth2_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl="token", tokenUrl="token", refreshUrl="token/refresh")
+# This is more about leveraging a third party oath2 (i.e. Facebook, Google, Github, etc.)
+#oauth2_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl="token", tokenUrl="token", refreshUrl="token/refresh")
 token_auth_scheme = HTTPBearer()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+SCOPES = {
+    "user": "Basic user actions",
+    "admin": "Admin level actions",
+}
 
 # Generate RSA key pair
 private_key = rsa.generate_private_key(
@@ -56,7 +63,7 @@ def authenticate_user(db: Session, uname: str, password: str):
         return False
     return user
 
-def create_access_token(data: dict, private_key, expires_delta: Union[timedelta, None] = None):
+def create_access_token(scopes, data: dict, private_key, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
 
     if expires_delta:
@@ -65,6 +72,7 @@ def create_access_token(data: dict, private_key, expires_delta: Union[timedelta,
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     
     to_encode.update({"exp": expire})
+    to_encode.update(scopes)
 
     encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorithm)
     return encoded_jwt
@@ -85,13 +93,23 @@ def create_refresh_token(data: dict, private_key, expires_delta: Union[timedelta
     encoded_jwt = jwt.encode(to_encode, private_key, algorithm=get_settings().algorithm)  # Adjust the algorithm as needed
     return encoded_jwt
 
+def get_uname(token: str, public_key) -> Optional[str]:
+    try:
+        payload = jwt.decode(token, public_key, algorithms=[get_settings().algorithm])        
+        if not (uname := payload.get("sub")):
+            raise exceptions.raise_unauthorized("Could not validate credentials")
+        return uname
+    except ExpiredSignatureError:
+        raise exceptions.raise_unauthorized("Token has expired")
+    except JWTError:
+        raise exceptions.raise_unauthorized("Could not validate credentials")
+
 def decode_jwt(token: str, public_key) -> Optional[str]:
     try:
         payload = jwt.decode(token, public_key, algorithms=[get_settings().algorithm])        
         if not (uname := payload.get("sub")):
             raise exceptions.raise_unauthorized("Could not validate credentials")
-        print(payload.get("exp"))
-        return uname
+        return payload
     except ExpiredSignatureError:
         raise exceptions.raise_unauthorized("Token has expired")
     except JWTError:
