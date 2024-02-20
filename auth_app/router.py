@@ -77,6 +77,15 @@ async def refresh_access_token(
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite='Lax')    
     return schemas.Token(access_token=access_token, token_type="bearer")
 
+@router.post("/logout")
+def logout_user(
+    user: schemas.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    #TODO: Need to remove the refresh token from the database
+
+    return f"TODO: logout endpoint"
+
 @router.get("/protected-endpoint")
 def protected_endpoint(
     _ : Annotated[None, Depends(validate_token)]
@@ -92,49 +101,58 @@ def protected_endpoint(
     # Your endpoint logic here
     return {"message": "This is an admin protected endpoint"}
 
-@router.post("/register", response_model=schemas.User)
-def register_user(
-        userCreate: schemas.UserCreate, 
-        db: Session = Depends(get_db)
+@router.get("/manage/scopes")
+def get_scopes(
+    _ = Depends(is_admin())
+):    
+    #TODO: return list of scopes
+
+    pass
+
+@router.post("/manage/scopes/update")
+def update_scope(
+    _ = Depends(is_admin())
+):    
+    #TODO: update the provided scope
+
+    pass
+
+@router.post("/manage/scopes/create")
+def update_scope(
+    _ = Depends(is_admin())
+):
+    #TODO: create a new scope
+
+    pass
+
+@router.get("/manage/users")
+def get_scopes(
+    _ = Depends(is_admin())
+):
+    #TODO: return list of users
+
+    pass
+
+@router.post("/manage/users/update")
+def update_scope(
+    _ = Depends(is_admin())
+):
+    #TODO: update the provided user
+
+    pass
+
+@router.post("/manage/users/create", response_model=schemas.User)
+def update_scope(
+    userCreate: schemas.UserCreate,
+    _ = Depends(is_admin()),
+    db: Session = Depends(get_db)
 ):
     if crud.get_db_user_by_uname(db, userCreate.uname):
         exceptions.raise_bad_request(f"user already exists")
-    userCreate.password = auth.get_password_hash(userCreate.password)
-    if user := crud.create_db_user(db, userCreate):
-        return user
-    exceptions.raise_bad_request(f"error creating user")
     
-@router.post("/reset", response_model=schemas.User)
-def update_user(userInfo: schemas.User, db: Session = Depends(get_db)):
-    return f"TODO: reset endpoint"
+    userCreate.password = auth.get_password_hash(userCreate.password)
 
-@router.post("/logout")
-def logout_user(
-    user: schemas.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    #TODO: Need to remove the refresh token from the database
-
-    return f"TODO: logout endpoint"
-
-@router.post("/disable", response_model=schemas.UserBase)
-def disable_user(
-        user: schemas.UserBase, 
-        db: Session = Depends(get_db)
-):
-    if not (user := crud.get_db_user_by_uname(db, user.uname)):
-        exceptions.raise_bad_request(f"user doesn't exists")
-    if not (updated_user := crud.disable_db_user(db, user.uname)):
-        exceptions.raise_server_error(f"failed to disable user")
-    return updated_user
-
-@router.post("/enable", response_model=schemas.UserBase)
-def enable_user(
-        user: schemas.UserBase, 
-        db: Session = Depends(get_db)
-):
-    if not (user := crud.get_db_user_by_uname(db, user.uname)):
-        exceptions.raise_bad_request(f"user doesn't exists")
-    if not (updated_user := crud.enable_db_user(db, user.uname)):
-        exceptions.raise_server_error(f"failed to disable user")
-    return updated_user
+    if not (user := crud.create_db_user(db, userCreate)):
+        exceptions.raise_bad_request(f"error creating user")
+    
+    return user
