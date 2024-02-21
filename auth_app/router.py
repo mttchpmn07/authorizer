@@ -18,7 +18,9 @@ async def reroute_to_docs():
     return RedirectResponse("/docs")
 
 @router.get("/key")
-async def get_public_key():
+async def get_public_key(
+    _: None = Depends(validate_token)
+):
     return {"public_key": auth.get_public_key()}
 
 @router.post("/login")

@@ -14,6 +14,6 @@ source venv/Scripts/activate
 python -m pip install --upgrade pip
 
 # Install required packages
-python -m pip install fastapi pydantic_settings uvicorn sqlalchemy python-dotenv python-multipart python-jose cryptography==38.0.4 passlib argon2-cffi validators
+python -m pip install fastapi pydantic_settings uvicorn sqlalchemy python-dotenv python-multipart python-jose cryptography==38.0.4 passlib argon2-cffi validators pytest httpx pytest-asyncio
 
 echo "Setup completed."
